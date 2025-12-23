@@ -1,0 +1,6 @@
+name: CrypticSmp
+version: '1.0-SNAPSHOT'
+main: net.saturn.crypticSmp.CrypticSmp
+api-version: '1.21'
+load: STARTUP
+authors: [ ___Pumpkinn ]
