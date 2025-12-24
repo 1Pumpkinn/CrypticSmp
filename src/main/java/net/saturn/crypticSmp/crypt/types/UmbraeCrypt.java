@@ -4,6 +4,7 @@ import net.saturn.crypticSmp.CrypticSmp;
 import net.saturn.crypticSmp.crypt.CryptAbility;
 import net.saturn.crypticSmp.crypt.CryptManager;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
@@ -48,8 +49,40 @@ public class UmbraeCrypt implements CryptAbility {
             // Mark as stunned for camera lock
             stunnedEntities.add(target.getUniqueId());
 
-            // Store original location for camera locking
-            Location originalLoc = target.getLocation().clone();
+            // Spawn shadow particles around target
+            Location targetLoc = target.getLocation();
+            CrypticSmp.getInstance().getServer().getScheduler().runTaskTimer(
+                    CrypticSmp.getInstance(),
+                    new Runnable() {
+                        int ticks = 0;
+                        @Override
+                        public void run() {
+                            if (ticks >= 100 || !target.isValid()) {
+                                return;
+                            }
+
+                            // Spawn dark particles in a spiral around the target
+                            Location loc = target.getLocation().add(0, 1, 0);
+                            for (int i = 0; i < 3; i++) {
+                                double angle = (ticks + i * 120) * 0.1;
+                                double x = Math.cos(angle) * 1.5;
+                                double z = Math.sin(angle) * 1.5;
+                                loc.getWorld().spawnParticle(
+                                        Particle.LARGE_SMOKE,
+                                        loc.clone().add(x, 0, z),
+                                        1, 0, 0, 0, 0
+                                );
+                                loc.getWorld().spawnParticle(
+                                        org.bukkit.Particle.SQUID_INK,
+                                        loc.clone().add(x, 0, z),
+                                        2, 0.1, 0.1, 0.1, 0
+                                );
+                            }
+                            ticks++;
+                        }
+                    },
+                    0L, 2L
+            );
 
             // Remove stun after 5 seconds
             CrypticSmp.getInstance().getServer().getScheduler().runTaskLater(
