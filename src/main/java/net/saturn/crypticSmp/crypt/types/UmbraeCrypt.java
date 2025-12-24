@@ -1,22 +1,21 @@
 package net.saturn.crypticSmp.crypt.types;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.*;
 import net.saturn.crypticSmp.CrypticSmp;
 import net.saturn.crypticSmp.crypt.CryptAbility;
 import net.saturn.crypticSmp.crypt.CryptManager;
 import org.bukkit.Location;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 public class UmbraeCrypt implements CryptAbility {
+    private static final Set<UUID> stunnedEntities = new HashSet<>();
 
     @Override
     public void applyPassive(Player player) {
@@ -29,119 +28,47 @@ public class UmbraeCrypt implements CryptAbility {
 
     @Override
     public void useAbility1(Player player, CryptManager manager) {
-
         if (manager.isOnCooldown(player, "umbrae_ability1")) {
-            player.sendMessage("§cShadow Clone is on cooldown for "
+            player.sendMessage("§cShadow Grasp is on cooldown for "
                     + manager.getRemainingCooldown(player, "umbrae_ability1") + "s");
             return;
         }
 
-        Location cloneLoc = player.getLocation().clone();
-        int entityId = new Random().nextInt(100_000) + 1_000;
-        UUID fakeUUID = UUID.randomUUID();
+        LivingEntity target = player.getTargetEntity(10, false) instanceof LivingEntity ?
+                (LivingEntity) player.getTargetEntity(10, false) : null;
 
-        try {
-            WrappedGameProfile wrappedProfile =
-                    new WrappedGameProfile(fakeUUID, player.getName());
+        if (target != null && target != player) {
+            // Add blindness
+            target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
 
-            WrappedGameProfile realProfile =
-                    WrappedGameProfile.fromPlayer(player);
+            // Add slowness and jump boost negative to prevent movement
+            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 10));
+            target.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 100, 128));
 
-            wrappedProfile.getProperties().putAll(realProfile.getProperties());
+            // Mark as stunned for camera lock
+            stunnedEntities.add(target.getUniqueId());
 
-            PacketContainer infoPacket =
-                    ProtocolLibrary.getProtocolManager()
-                            .createPacket(PacketType.Play.Server.PLAYER_INFO);
+            // Store original location for camera locking
+            Location originalLoc = target.getLocation().clone();
 
-            infoPacket.getPlayerInfoActions().write(
-                    0,
-                    EnumSet.of(EnumWrappers.PlayerInfoAction.ADD_PLAYER)
+            // Remove stun after 5 seconds
+            CrypticSmp.getInstance().getServer().getScheduler().runTaskLater(
+                    CrypticSmp.getInstance(),
+                    () -> stunnedEntities.remove(target.getUniqueId()),
+                    100L
             );
 
-            List<PlayerInfoData> data = new ArrayList<>();
-            data.add(new PlayerInfoData(
-                    wrappedProfile,
-                    0,
-                    EnumWrappers.NativeGameMode.SURVIVAL,
-                    WrappedChatComponent.fromText(player.getName())
-            ));
-
-            infoPacket.getPlayerInfoDataLists().write(1, data);
-
-            PacketContainer spawnPacket =
-                    ProtocolLibrary.getProtocolManager()
-                            .createPacket(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
-
-            spawnPacket.getIntegers().write(0, entityId);
-            spawnPacket.getUUIDs().write(0, fakeUUID);
-            spawnPacket.getDoubles()
-                    .write(0, cloneLoc.getX())
-                    .write(1, cloneLoc.getY())
-                    .write(2, cloneLoc.getZ());
-            spawnPacket.getBytes()
-                    .write(0, (byte) (cloneLoc.getYaw() * 256 / 360))
-                    .write(1, (byte) (cloneLoc.getPitch() * 256 / 360));
-
-            for (Player other : player.getWorld().getPlayers()) {
-                if (other.equals(player)) continue;
-
-                ProtocolLibrary.getProtocolManager()
-                        .sendServerPacket(other, infoPacket);
-                ProtocolLibrary.getProtocolManager()
-                        .sendServerPacket(other, spawnPacket);
-
-                other.hidePlayer(CrypticSmp.getInstance(), player);
-            }
-
-            player.sendMessage("§8Shadow Clone active! You have 5 seconds to move.");
-
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-
-                    if (!player.isOnline()) return;
-
-                    PacketContainer destroyPacket =
-                            ProtocolLibrary.getProtocolManager()
-                                    .createPacket(PacketType.Play.Server.ENTITY_DESTROY);
-
-                    destroyPacket.getIntLists()
-                            .write(0, Collections.singletonList(entityId));
-
-                    PacketContainer removeInfoPacket =
-                            ProtocolLibrary.getProtocolManager()
-                                    .createPacket(PacketType.Play.Server.PLAYER_INFO_REMOVE);
-
-                    removeInfoPacket.getUUIDLists()
-                            .write(0, Collections.singletonList(fakeUUID));
-
-                    for (Player other : player.getWorld().getPlayers()) {
-                        if (other.equals(player)) continue;
-
-                        ProtocolLibrary.getProtocolManager()
-                                .sendServerPacket(other, destroyPacket);
-                        ProtocolLibrary.getProtocolManager()
-                                .sendServerPacket(other, removeInfoPacket);
-
-                        other.showPlayer(CrypticSmp.getInstance(), player);
-                    }
-
-                    player.sendMessage("§8Shadow Clone ended!");
-                }
-            }.runTaskLater(CrypticSmp.getInstance(), 100L);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            player.sendMessage("§cFailed to create shadow clone!");
+            player.sendMessage("§8Shadow Grasp captured " + target.getName() + "!");
+        } else {
+            player.sendMessage("§cNo target found!");
             return;
         }
 
-        manager.setCooldown(player, "umbrae_ability1", 75);
+        manager.setCooldown(player, "umbrae_ability1", 45);
     }
 
     @Override
     public void useAbility2(Player player, CryptManager manager) {
-
         if (manager.isOnCooldown(player, "umbrae_ability2")) {
             player.sendMessage("§cFade Step is on cooldown for "
                     + manager.getRemainingCooldown(player, "umbrae_ability2") + "s");
@@ -169,11 +96,15 @@ public class UmbraeCrypt implements CryptAbility {
 
     @Override
     public String getAbility1Name() {
-        return "Shadow Clone";
+        return "Shadow Grasp";
     }
 
     @Override
     public String getAbility2Name() {
         return "Fade Step";
+    }
+
+    public static boolean isStunned(UUID entityId) {
+        return stunnedEntities.contains(entityId);
     }
 }
