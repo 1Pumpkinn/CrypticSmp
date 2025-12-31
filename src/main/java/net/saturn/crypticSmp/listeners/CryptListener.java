@@ -2,10 +2,8 @@ package net.saturn.crypticSmp.listeners;
 
 import net.saturn.crypticSmp.crypt.CryptManager;
 import net.saturn.crypticSmp.crypt.CryptType;
-import net.saturn.crypticSmp.crypt.types.AquarionCrypt;
 import net.saturn.crypticSmp.crypt.types.ThundrosCrypt;
 import net.saturn.crypticSmp.crypt.types.UmbraeCrypt;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -60,19 +58,6 @@ public class CryptListener implements Listener {
 
             // Set velocity to zero to prevent any physics-based movement
             player.setVelocity(new Vector(0, 0, 0));
-        }
-
-        // Check if player is being pulled by Aquarion's Ocean's Grasp
-        if (AquarionCrypt.isPulled(player.getUniqueId())) {
-            // Cancel player movement (they can't walk) but allow camera movement
-            if (event.getFrom().getX() != event.getTo().getX() ||
-                    event.getFrom().getY() != event.getTo().getY() ||
-                    event.getFrom().getZ() != event.getTo().getZ()) {
-                event.setTo(event.getFrom().clone());
-                // Keep the new yaw and pitch (camera movement)
-                event.getTo().setYaw(event.getTo().getYaw());
-                event.getTo().setPitch(event.getTo().getPitch());
-            }
         }
     }
 }

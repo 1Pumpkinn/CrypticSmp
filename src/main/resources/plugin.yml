@@ -1,19 +1,16 @@
-name: CrypticSmp
-version: '${version}'
-main: net.saturn.crypticSmp.CrypticSmp
-api-version: '1.21'
-load: STARTUP
-authors: [ ___Pumpkinn ]
-description: A Minecraft plugin featuring 8 unique crypts with special abilities
+name: CryptJavaPlugin
+version: 1.0
+main: me.Proba.crypt.CryptJavaPlugin
 
 commands:
-  crypt:
-    description: Main command for crypt system
-    usage: |-
-      §e/crypt list §7- View all available crypts
-      §e/crypt choose <name> §7- Choose a crypt
-      §e/crypt info §7- View your current crypt
-      §e/crypt a1 §7- Use ability 1
-      §e/crypt a2 §7- Use ability 2
-      §e/crypt reset §7- Reset your crypt
-    aliases: [c, crypts]
+  givecrypt:
+    description: Gives the player a crypt
+    usage: /givecrypt <crypt_name>
+
+  ability:
+    description: Use crypt abilities
+    usage: /ability <1|2>
+
+  removecrypt:
+    description: Removes all equipped crypts from the player
+    usage: /removecrypt
